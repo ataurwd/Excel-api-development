@@ -1,11 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPAC List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .status-merged-completed   { @apply bg-green-100 text-green-800; }
+    .status-merged-announced   { @apply bg-blue-100 text-blue-800; }
+    .status-active             { @apply bg-yellow-100 text-yellow-800; }
+    .status-liquidated         { @apply bg-red-100 text-red-800; }
+  </style>
 </head>
-<body>
-    
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+  <div class="container mx-auto px-6 py-8 max-w-7xl">
+
+    <!-- Search & Filters (kept for design) -->
+    <section class="py-8 border-b border-gray-200 bg-gray-100/50">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1 relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+          <input class="w-full pl-10 h-10 rounded-md border border-gray-300 bg-white" placeholder="Search by name or symbol..." />
+        </div>
+        <button class="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm w-full md:w-52">
+          <span>All Status</span>
+          <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="py-8">
+      <div class="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b">
+              <tr>
+                <th class="h-12 px-4 text-left font-medium text-gray-500 w-20">#</th>
+                <th class="h-12 px-4 text-left font-medium text-gray-500">Name</th>
+                <th class="h-12 px-4 text-right font-medium text-gray-500">Price</th>
+                <th class="h-12 px-4 text-right font-medium text-gray-500">24h %</th>
+                <th class="h-12 px-4 text-right font-medium text-gray-500">Volume</th>
+                <th class="h-12 px-4 text-right font-medium text-gray-500">Market Cap</th>
+                <th class="h-12 px-4 text-left font-medium text-gray-500">Status</th>
+                <th class="h-12 px-4 w-20"></th>
+              </tr>
+            </thead>
+            <tbody id="spacTableBody" class="divide-y divide-gray-200">
+              <!-- Filled by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tbody = document.getElementById('spacTableBody');
+
+    // Helper to format numbers
+    const formatNumber = (n) => n ? parseFloat(n).toLocaleString() : '-';
+    const formatPrice = (p) => p ? `$${parseFloat(p).toFixed(2)}` : '-';
+    const formatChange = (c) => {
+      if (!c) return '-';
+      const val = parseFloat(c);
+      const sign = val >= 0 ? '+' : '';
+      return `${sign}${val.toFixed(2)}%`;
+    };
+    const changeColor = (c) => parseFloat(c) >= 0 ? 'text-green-600' : 'text-red-600';
+
+    // Status badge class mapping
+    const statusClass = {
+      "Merger Completed": "status-merged-completed",
+      "Merger Announced": "status-merged-announced",
+      "Active": "status-active",
+      "Liquidated / Dissolved": "status-liquidated"
+    };
+
+    fetch('https://ataurwd.github.io/Excel-api-development/data.json')
+      .then(res => res.json())
+      .then(data => {
+        console.log(data)
+        const list = data.filter(item => item.latestPrice);
+
+        list.forEach((item, idx) => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-gray-50 transition';
+
+          // Determine logo letter (first letter of symbol)
+          const logoLetter = item.sharesSymbol?.[0] || '?';
+
+          // Determine status text & class
+          let statusText = item.stage || 'Unknown';
+          if (statusText.includes('Merger Completed')) statusText = 'Merger Completed';
+          if (status_text.includes('announced')) statusText = 'Merger Announced';
+          if (statusText.includes('Liquidated')) statusText = 'Liquidated / Dissolved';
+
+          row.innerHTML = `
+            <td class="h-16 px-4 text-gray-500">${idx + 1}</td>
+            <td class="h-16 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm">
+                  ${logoLetter}
+                </div>
+                <div>
+                  <div class="font-medium">${item.name || item.sharesSymbol}</div>
+                  <div class="text-xs text-gray-500">${item.sharesSymbol}</div>
+                </div>
+              </div>
+            </td>
+            <td class="h-16 px-4 text-right font-medium">${formatPrice(item.latestPrice)}</td>
+            <td class="h-16 px-4 text-right font-medium ${changeColor(item.changePercent)}">
+              ${formatChange(item.changePercent)}
+            </td>
+            <td class="h-16 px-4 text-right text-gray-600">${formatNumber(item.volume)}M</td>
+            <td class="h-16 px-4 text-right text-gray-600">$${formatNumber(item.marketCap)}B</td>
+            <td class="h-16 px-4">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusClass[statusText] || 'bg-gray-100 text-gray-700'}">
+                ${statusText}
+              </span>
+            </td>
+            <td class="h-16 px-4 text-right">
+              <a href="${item.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                View →
+              </a>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      })
+      .catch(err => {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-600">Failed to load data: ${err.message}</td></tr>`;
+      });
+  </script>
 </body>
 </html>

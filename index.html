@@ -1,141 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SPAC List</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .status-merged-completed   { @apply bg-green-100 text-green-800; }
-    .status-merged-announced   { @apply bg-blue-100 text-blue-800; }
-    .status-active             { @apply bg-yellow-100 text-yellow-800; }
-    .status-liquidated         { @apply bg-red-100 text-red-800; }
-  </style>
-</head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-
-  <div class="container mx-auto px-6 py-8 max-w-7xl">
-
-    <!-- Search & Filters (kept for design) -->
-    <section class="py-8 border-b border-gray-200 bg-gray-100/50">
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1 relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.3-4.3"></path>
-          </svg>
-          <input class="w-full pl-10 h-10 rounded-md border border-gray-300 bg-white" placeholder="Search by name or symbol..." />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPAC Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .status-5 {
+        @apply bg-green-100 text-green-800;
+      }
+      .status-6 {
+        @apply bg-red-100 text-red-800;
+      }
+      .status-2 {
+        @apply bg-yellow-100 text-yellow-800;
+      }
+      .status-3 {
+        @apply bg-blue-100 text-blue-800;
+      }
+      .status-1 {
+        @apply bg-indigo-100 text-indigo-800;
+      }
+      .status-4 {
+        @apply bg-purple-100 text-purple-800;
+      }
+      .page-active {
+        @apply bg-blue-600 text-white hover:bg-blue-700;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 min-h-screen">
+    <div class="container mx-auto px-6 py-8 max-w-7xl">
+      <!-- Search -->
+      <section class="py-8 border-b border-gray-200 bg-gray-100/50">
+        <div class="flex gap-4">
+          <div class="flex-1 relative">
+            <svg
+              class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <input
+              id="searchInput"
+              class="w-full pl-10 h-10 rounded-md border border-gray-300 bg-white"
+              placeholder="Search by symbol or name..."
+            />
+          </div>
         </div>
-        <button class="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm w-full md:w-52">
-          <span>All Status</span>
-          <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
-        </button>
-      </div>
-    </section>
+      </section>
 
-    <!-- Table -->
-    <section class="py-8">
-      <div class="rounded-lg border bg-white shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b">
-              <tr>
-                <th class="h-12 px-4 text-left font-medium text-gray-500 w-20">#</th>
-                <th class="h-12 px-4 text-left font-medium text-gray-500">Name</th>
-                <th class="h-12 px-4 text-right font-medium text-gray-500">Price</th>
-                <th class="h-12 px-4 text-right font-medium text-gray-500">24h %</th>
-                <th class="h-12 px-4 text-right font-medium text-gray-500">Volume</th>
-                <th class="h-12 px-4 text-right font-medium text-gray-500">Market Cap</th>
-                <th class="h-12 px-4 text-left font-medium text-gray-500">Status</th>
-                <th class="h-12 px-4 w-20"></th>
-              </tr>
-            </thead>
-            <tbody id="spacTableBody" class="divide-y divide-gray-200">
-              <!-- Filled by JavaScript -->
-            </tbody>
-          </table>
+      <!-- Loading State -->
+      <div id="loading" class="text-center py-24">
+        <div
+          class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"
+        ></div>
+        <p class="mt-4 text-lg text-gray-600">Loading SPAC data...</p>
+      </div>
+
+      <!-- Table (hidden until loaded) -->
+      <section id="tableSection" class="py-8 hidden">
+        <div class="rounded-lg border bg-white shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th
+                    class="h-12 px-4 text-left font-medium text-gray-500 w-20"
+                  >
+                    #
+                  </th>
+                  <th class="h-12 px-4 text-left font-medium text-gray-500">
+                    Name
+                  </th>
+                  <th class="h-12 px-4 text-right font-medium text-gray-500">
+                    Price
+                  </th>
+                  <th class="h-12 px-4 text-right font-medium text-gray-500">
+                    24h %
+                  </th>
+                  <th class="h-12 px-4 text-right font-medium text-gray-500">
+                    Volume
+                  </th>
+                  <th class="h-12 px-4 text-right font-medium text-gray-500">
+                    Market Cap
+                  </th>
+                  <th class="h-12 px-4 text-left font-medium text-gray-500">
+                    Status
+                  </th>
+                  <th class="h-12 px-4 w-20"></th>
+                </tr>
+              </thead>
+              <tbody id="spacTableBody" class="divide-y divide-gray-200">
+                <!-- JS fills here -->
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    </section>
-  </div>
 
-  <script>
-    const tbody = document.getElementById('spacTableBody');
+        <!-- Pagination (always at bottom) -->
+        <div
+          class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4"
+        >
+          <p class="text-sm text-gray-600">
+            Showing <span id="from">1</span>–<span id="to">20</span> of
+            <span id="total">0</span> results
+          </p>
+          <div id="pagination" class="flex items-center gap-2">
+            <!-- Dynamic pagination buttons -->
+          </div>
+        </div>
+      </section>
+    </div>
 
-    // Helper to format numbers
-    const formatNumber = (n) => n ? parseFloat(n).toLocaleString() : '-';
-    const formatPrice = (p) => p ? `$${parseFloat(p).toFixed(2)}` : '-';
-    const formatChange = (c) => {
-      if (!c) return '-';
-      const val = parseFloat(c);
-      const sign = val >= 0 ? '+' : '';
-      return `${sign}${val.toFixed(2)}%`;
-    };
-    const changeColor = (c) => parseFloat(c) >= 0 ? 'text-green-600' : 'text-red-600';
+    <script>
+      const loadingEl = document.getElementById("loading");
+      const tableSection = document.getElementById("tableSection");
+      const tbody = document.getElementById("spacTableBody");
+      const paginationDiv = document.getElementById("pagination");
+      const searchInput = document.getElementById("searchInput");
 
-    // Status badge class mapping
-    const statusClass = {
-      "Merger Completed": "status-merged-completed",
-      "Merger Announced": "status-merged-announced",
-      "Active": "status-active",
-      "Liquidated / Dissolved": "status-liquidated"
-    };
+      let allData = [];
+      let filteredData = [];
+      let currentPage = 1;
+      const itemsPerPage = 20;
 
-    fetch('https://ataurwd.github.io/Excel-api-development/data.json')
-      .then(res => res.json())
-      .then(data => {
-        console.log(data)
-        const list = data.filter(item => item.latestPrice);
+      // Clean number (handles "2,58", "132.582.919", etc.)
+      const cleanNum = (str) =>
+        str ? parseFloat(String(str).replace(/[^\d.-]/g, "") || "0") : 0;
 
-        list.forEach((item, idx) => {
-          const row = document.createElement('tr');
-          row.className = 'hover:bg-gray-50 transition';
+      const formatPrice = (p) => (p ? `$${cleanNum(p).toFixed(2)}` : "N/A");
+      const formatVolume = (v) =>
+        v ? `${(cleanNum(v) / 1000000).toFixed(2)}M` : "N/A";
+      const formatMarketCap = (s) => {
+        const n = cleanNum(s);
+        if (!n) return "N/A";
+        return `$${n.toLocaleString("en-US", {
+          notation: "compact",
+          maximumFractionDigits: 1,
+        })}`;
+      };
 
-          // Determine logo letter (first letter of symbol)
-          const logoLetter = item.sharesSymbol?.[0] || '?';
+      const calculateChange = (latest, prev) => {
+        const l = cleanNum(latest);
+        const p = cleanNum(prev);
+        if (!l || !p || p === 0) return { value: "N/A", class: "" };
+        const change = ((l - p) / p) * 100;
+        const sign = change >= 0 ? "+" : "";
+        return {
+          value: `${sign}${change.toFixed(2)}%`,
+          class: change >= 0 ? "text-green-600" : "text-red-600",
+        };
+      };
 
-          // Determine status text & class
-          let statusText = item.stage || 'Unknown';
-          if (statusText.includes('Merger Completed')) statusText = 'Merger Completed';
-          if (status_text.includes('announced')) statusText = 'Merger Announced';
-          if (statusText.includes('Liquidated')) statusText = 'Liquidated / Dissolved';
+      const getStatusInfo = (stage) => {
+        const map = {
+          "5. Merger Complete": { text: "Merger Complete", class: "status-5" },
+          "6. Liquidated / Dissolved": {
+            text: "Liquidated",
+            class: "status-6",
+          },
+          "2. Seeking Target": { text: "Seeking Target", class: "status-2" },
+          "3. Target Announced": {
+            text: "Target Announced",
+            class: "status-3",
+          },
+          "1. New / Forming": { text: "New / Forming", class: "status-1" },
+          "4. Deal Approved": { text: "Deal Approved", class: "status-4" },
+        };
+        return (
+          map[stage] || {
+            text: stage || "Unknown",
+            class: "bg-gray-100 text-gray-700",
+          }
+        );
+      };
 
-          row.innerHTML = `
-            <td class="h-16 px-4 text-gray-500">${idx + 1}</td>
+      const renderTable = () => {
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = filteredData.slice(start, end);
+
+        tbody.innerHTML = "";
+        if (pageData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-gray-500">No SPACs found</td></tr>`;
+        } else {
+          pageData.forEach((item, i) => {
+            const idx = start + i + 1;
+            const logoLetter = item.sharesSymbol?.[0] || "?";
+            const status = getStatusInfo(item.stage);
+            const change = calculateChange(
+              item.latestPrice,
+              item.previousClose
+            );
+
+            const row = document.createElement("tr");
+            row.className = "hover:bg-gray-50 transition";
+            row.innerHTML = `
+            <td class="h-16 px-4 text-gray-500">${idx}</td>
             <td class="h-16 px-4">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm">
                   ${logoLetter}
                 </div>
                 <div>
-                  <div class="font-medium">${item.name || item.sharesSymbol}</div>
-                  <div class="text-xs text-gray-500">${item.sharesSymbol}</div>
+                     <div class="text-2x font-bold text-black">${
+                       item.sharesSymbol || "N/A"
+                     }</div>
+                  <div class="">${item.name || "N/A"}</div>
+                 
                 </div>
               </div>
             </td>
-            <td class="h-16 px-4 text-right font-medium">${formatPrice(item.latestPrice)}</td>
-            <td class="h-16 px-4 text-right font-medium ${changeColor(item.changePercent)}">
-              ${formatChange(item.changePercent)}
-            </td>
-            <td class="h-16 px-4 text-right text-gray-600">${formatNumber(item.volume)}M</td>
-            <td class="h-16 px-4 text-right text-gray-600">$${formatNumber(item.marketCap)}B</td>
+            <td class="h-16 px-4 text-right font-medium">${formatPrice(
+              item.latestPrice
+            )}</td>
+            <td class="h-16 px-4 text-right font-medium ${change.class}">${
+              change.value
+            }</td>
+            <td class="h-16 px-4 text-right text-gray-600">${formatVolume(
+              item.volume
+            )}</td>
+            <td class="h-16 px-4 text-right text-gray-600">${formatMarketCap(
+              item.size
+            )}</td>
             <td class="h-16 px-4">
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusClass[statusText] || 'bg-gray-100 text-gray-700'}">
-                ${statusText}
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                status.class
+              }">
+                ${status.text}
               </span>
             </td>
             <td class="h-16 px-4 text-right">
-              <a href="${item.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                View →
+              <a href="${
+                item.url || "#"
+              }" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                View
               </a>
             </td>
           `;
-          tbody.appendChild(row);
-        });
-      })
-      .catch(err => {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-600">Failed to load data: ${err.message}</td></tr>`;
+            tbody.appendChild(row);
+          });
+        }
+
+        // Update showing info
+        document.getElementById("from").textContent =
+          filteredData.length > 0 ? start + 1 : 0;
+        document.getElementById("to").textContent = Math.min(
+          end,
+          filteredData.length
+        );
+        document.getElementById("total").textContent = filteredData.length;
+
+        renderPagination();
+      };
+
+      const renderPagination = () => {
+        paginationDiv.innerHTML = "";
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        if (totalPages <= 1) return;
+
+        const createBtn = (text, page, disabled = false) => {
+          const btn = document.createElement("button");
+          btn.textContent = text;
+          btn.disabled = disabled;
+          btn.className = `h-9 w-9 rounded border ${
+            disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
+          } ${page === currentPage ? "page-active" : "bg-white"}`;
+          if (!disabled)
+            btn.onclick = () => {
+              currentPage = page;
+              renderTable();
+            };
+          return btn;
+        };
+
+        paginationDiv.appendChild(
+          createBtn("Pre", currentPage - 1, currentPage === 1)
+        );
+
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+
+        if (startPage > 1) {
+          paginationDiv.appendChild(createBtn(1, 1));
+          if (startPage > 2) {
+            const dots = document.createElement("span");
+            dots.textContent = "...";
+            dots.className = "px-2";
+            paginationDiv.appendChild(dots);
+          }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          paginationDiv.appendChild(createBtn(i, i));
+        }
+
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) {
+            const dots = document.createElement("span");
+            dots.textContent = "...";
+            dots.className = "px-2";
+            paginationDiv.appendChild(dots);
+          }
+          paginationDiv.appendChild(createBtn(totalPages, totalPages));
+        }
+
+        paginationDiv.appendChild(
+          createBtn("Next", currentPage + 1, currentPage === totalPages)
+        );
+      };
+
+      // Search
+      searchInput.addEventListener("input", () => {
+        const q = searchInput.value.trim().toLowerCase();
+        filteredData = allData.filter(
+          (item) =>
+            item.sharesSymbol?.toLowerCase().includes(q) ||
+            item.name?.toLowerCase().includes(q)
+        );
+        currentPage = 1;
+        renderTable();
       });
-  </script>
-</body>
+
+      // Load Data
+      fetch("https://ataurwd.github.io/Excel-api-development/data.json")
+        .then((r) => r.json())
+        .then((data) => {
+          allData = data.filter((item) => item && item.sharesSymbol);
+          filteredData = [...allData];
+          loadingEl.classList.add("hidden");
+          tableSection.classList.remove("hidden");
+          renderTable();
+        })
+        .catch((err) => {
+          loadingEl.innerHTML = `<p class="text-red-600 text-lg">Failed to load data. Please try again later.</p>`;
+          console.error(err);
+        });
+    </script>
+  </body>
 </html>

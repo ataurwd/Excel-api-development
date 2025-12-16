@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPAC Market Overview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card {
+      @apply bg-white rounded-2xl shadow-md p-6 border border-gray-200 transition hover:shadow-xl hover:-translate-y-1;
+    }
+    .change-positive { @apply text-green-600; }
+    .change-negative { @apply text-red-600; }
+    .change-na { @apply text-gray-500; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-12 px-6">
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-4xl font-bold text-gray-900 mb-2">SPAC Market Overview</h1>
+    <p class="text-lg text-gray-600 mb-12">REAL-TIME TRACKING OF SPECIAL PURPOSE ACQUISITION COMPANIES</p>
+
+    <!-- Loading -->
+    <div id="loading" class="text-center py-12 text-gray-600 text-xl">
+      Loading latest SPAC data...
+    </div>
+
+    <!-- Grid of Cards -->
+    <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 hidden"></div>
+
+    <!-- View All Button -->
+    <div class="text-center mt-12">
+      <a href="https://www.spacanalytics.com/" target="_blank" class="inline-flex items-center px-8 py-4 bg-gray-200 text-gray-800 rounded-full font-medium hover:bg-gray-300 transition">
+        View All SPACs (SPACAnalytics)
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Sample CSV data
+    const csvText = `Ticker,Name,Latest Price,24h%,Volume,Market Cap,Link
+ASPC,ASPAC III Acquisition Corp.,16.81,+60.4%,High,N/A,https://www.spacanalytics.com/spac/ASPC
+ESHA,ESH Acquisition Corp.,12.79,+9.2%,Medium,N/A,https://www.spacanalytics.com/spac/ESHA
+BLRK,Bluerock Acquisition Corp.,10.01,0%,Low,~250M,https://www.spacanalytics.com/spac/BLRK
+KBON,Karbon Capital Partners Corp.,10.08,+0.8%,Low,~250M,https://www.spacanalytics.com/spac/KBON
+MESH,Meshflow Acquisition Corp.,10.01,0%,Low,~300M,https://www.spacanalytics.com/spac/MESH
+DSAC,Daedalus Special Acquisition Corp.,10.04,+0.4%,Low,~225M,https://www.spacanalytics.com/spac/DSAC`;
+
+    let headers = [];
+    let rows = [];
+
+    const TICKER_COL = "Ticker";
+    const NAME_COL = "Name";
+    const PRICE_COL = "Latest Price";
+    const CHANGE_COL = "24h%";
+    const VOLUME_COL = "Volume";
+    const MARKETCAP_COL = "Market Cap";
+    const LINK_COL = "Link";
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split("\n");
+      headers = lines[0].split(",").map(h => h.trim());
+
+      rows = lines.slice(1).map(line => {
+        const values = line.split(",");
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = (values[i] || "").trim();
+        });
+        return obj;
+      });
+    }
+
+    function renderCards() {
+      const grid = document.getElementById("cards-grid");
+      grid.innerHTML = "";
+
+      rows.forEach(row => {
+        const ticker = row[TICKER_COL] || "N/A";
+        const name = row[NAME_COL] || "Unknown SPAC";
+        const price = row[PRICE_COL] || "N/A";
+        const change = row[CHANGE_COL] || "N/A";
+        const volume = row[VOLUME_COL] || "N/A";
+        const marketCap = row[MARKETCAP_COL] || "N/A";
+        const link = row[LINK_COL] || "#";
+
+        let changeClass = "change-na";
+        let changeIcon = "📊";
+        if (change.includes("+")) changeClass = "change-positive";
+        else if (change.includes("-")) changeClass = "change-negative";
+
+        const cardHTML = `
+          <a href="${link}" target="_blank" class="card block border-2 p-5 rounded-md">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h2 class="text-2xl font-bold text-gray-900">${ticker}</h2>
+                <p class="text-gray-600 text-sm mt-1">${name}</p>
+              </div>
+              <div class="text-right">
+                <span class="${changeClass} font-semibold">${changeIcon} ${change}</span>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-200 pt-4">
+              <div class="text-3xl font-bold text-gray-900 mb-2">$${price}</div>
+              <div class="text-sm text-gray-500">24h%</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-6 text-sm">
+              <div>
+                <span class="text-gray-500">Volume</span><br>
+                <span class="font-medium text-gray-900">${volume}</span>
+              </div>
+              <div>
+                <span class="text-gray-500">Market Cap</span><br>
+                <span class="font-medium text-gray-900">${marketCap}</span>
+              </div>
+            </div>
+          </a>
+        `;
+
+        grid.innerHTML += cardHTML;
+      });
+    }
+
+    // Simulate fetch
+    parseCSV(csvText);
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("cards-grid").classList.remove("hidden");
+    renderCards();
+  </script>
+</body>
+</html>

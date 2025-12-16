@@ -4,20 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Google Sheet Data Table</title>
-
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-6">
+<body class="bg-gray-100 p-6 font-sans">
 
-  <h1 class="text-2xl font-bold mb-4">Live Google Sheet Data</h1>
+  <h1 class="text-3xl font-bold mb-6 text-gray-800">Live Google Sheet Data</h1>
 
   <!-- Loading -->
   <div id="loading" class="text-center py-6 text-gray-600 font-medium">
     Loading data...
   </div>
 
-  <div class="overflow-x-auto bg-white rounded-lg shadow hidden" id="table-wrapper">
+  <!-- Table wrapper -->
+  <div id="table-wrapper" class="overflow-x-auto bg-white rounded-xl shadow-lg hidden">
     <table class="min-w-full border border-gray-200">
       <thead class="bg-gray-50" id="table-head"></thead>
       <tbody id="table-body"></tbody>
@@ -25,7 +24,7 @@
   </div>
 
   <!-- Pagination -->
-  <div id="pagination" class="flex flex-wrap gap-2 mt-4"></div>
+  <div id="pagination" class="flex flex-wrap gap-2 mt-4 justify-center"></div>
 
   <script>
     const CSV_URL =
@@ -35,16 +34,22 @@
     let currentPage = 1;
     let headers = [];
     let rows = [];
+    let symbolColumnName = "";  // Dynamically detect the symbol column name
 
     function parseCSV(csvText) {
       const lines = csvText.trim().split("\n");
-      headers = lines[0].split(",");
+      headers = lines[0].split(",").map(h => h.trim());
+
+      // Find the column that contains symbol (case-insensitive match with "symbol" or "shares")
+      symbolColumnName = headers.find(h => 
+        h.toLowerCase().includes("symbol") || h.toLowerCase().includes("shares")
+      ) || "";
 
       rows = lines.slice(1).map(line => {
         const values = line.split(",");
         const obj = {};
         headers.forEach((h, i) => {
-          obj[h.trim()] = values[i]?.trim();
+          obj[h] = values[i]?.trim() || "";
         });
         return obj;
       });
@@ -55,77 +60,94 @@
       const end = start + ROWS_PER_PAGE;
       const paginatedRows = rows.slice(start, end);
 
-      // Table Head
-      document.getElementById("table-head").innerHTML = `
+      // Visible headers: exclude the symbol column (whatever its name is)
+      const visibleHeaders = headers.filter(h => h !== symbolColumnName);
+
+      const headHTML = `
         <tr>
-          ${headers
-            .map(
-              h =>
-                `<th class="px-4 py-2 border text-left text-sm font-semibold">${h}</th>`
+          <th class="px-4 py-2 border text-left text-sm font-semibold">#</th>
+          ${visibleHeaders
+            .map(h =>
+              h.toLowerCase() === "name"
+                ? `<th class="px-4 py-2 border text-left text-sm font-semibold">Name & Symbol</th>`
+                : `<th class="px-4 py-2 border text-left text-sm font-semibold">${h}</th>`
             )
             .join("")}
+          <th class="px-4 py-2 border text-left text-sm font-semibold">URL</th>
         </tr>
       `;
+      document.getElementById("table-head").innerHTML = headHTML;
 
       // Table Body
-      document.getElementById("table-body").innerHTML = paginatedRows
-        .map(
-          row => `
-            <tr class="hover:bg-gray-50">
-              ${headers
-                .map(
-                  h =>
-                    `<td class="px-4 py-2 border text-sm">${row[h] || ""}</td>`
-                )
+      const bodyHTML = paginatedRows
+        .map((row, index) => {
+          const rowNumber = start + index + 1;
+          const symbol = row[symbolColumnName] || ""; // Get symbol dynamically
+          const urlValue = row["URL"] || row["Url"] || row["url"] || "";
+          return `
+            <tr class="hover:bg-gray-50 transition">
+              <td class="px-4 py-2 border text-sm text-gray-600">${rowNumber}</td>
+              ${visibleHeaders
+                .map(h => {
+                  const value = row[h] || "";
+                  // Show symbol under every "Name" column (in case there are multiple name-like columns)
+                  if (h.toLowerCase() === "name") {
+                    return `<td class="px-4 py-2 border text-sm text-gray-700 font-medium">
+                              <div class="font-semibold">${value}</div>
+                              <div class="text-gray-400 text-xs">${symbol}</div>
+                            </td>`;
+                  } else {
+                    return `<td class="px-4 py-2 border text-sm text-gray-600">
+                              <div>${value}</div>
+                            </td>`;
+                  }
+                })
                 .join("")}
+              <td class="px-4 py-2 border text-sm text-blue-600 hover:underline">
+                <a href="${urlValue}" target="_blank">Link</a>
+              </td>
             </tr>
-          `
-        )
+          `;
+        })
         .join("");
+      document.getElementById("table-body").innerHTML = bodyHTML;
     }
 
-function renderPagination() {
-  const totalPages = Math.ceil(rows.length / ROWS_PER_PAGE);
-  const pagination = document.getElementById("pagination");
+    function renderPagination() {
+      const totalPages = Math.ceil(rows.length / ROWS_PER_PAGE);
+      const pagination = document.getElementById("pagination");
 
-  pagination.innerHTML = "";
+      pagination.innerHTML = "";
+      const windowSize = 5;
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + windowSize - 1);
+      startPage = Math.max(1, endPage - windowSize + 1);
 
-  const windowSize = 5; // কতগুলো page একসাথে দেখাবো
-  let startPage = Math.max(1, currentPage - 2);
-  let endPage = Math.min(totalPages, startPage + windowSize - 1);
+      if (currentPage > 1) {
+        pagination.innerHTML += `
+          <button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Prev</button>
+        `;
+      }
 
-  // যদি endPage কম হয় windowSize অনুযায়ী adjust কর
-  startPage = Math.max(1, endPage - windowSize + 1);
+      for (let i = startPage; i <= endPage; i++) {
+        pagination.innerHTML += `
+          <button
+            onclick="goToPage(${i})"
+            class="px-3 py-1 border rounded ${
+              i === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-100"
+            }"
+          >
+            ${i}
+          </button>
+        `;
+      }
 
-  // Previous button
-  if (currentPage > 1) {
-    pagination.innerHTML += `
-      <button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Prev</button>
-    `;
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    pagination.innerHTML += `
-      <button
-        onclick="goToPage(${i})"
-        class="px-3 py-1 border rounded ${
-          i === currentPage
-            ? "bg-blue-600 text-white"
-            : "bg-white hover:bg-gray-100"
-        }"
-      >
-        ${i}
-      </button>
-    `;
-  }
-
-  // Next button
-  if (currentPage < totalPages) {
-    pagination.innerHTML += `
-      <button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Next</button>
-    `;
-  }
-}
+      if (currentPage < totalPages) {
+        pagination.innerHTML += `
+          <button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Next</button>
+        `;
+      }
+    }
 
     function goToPage(page) {
       currentPage = page;
@@ -138,10 +160,8 @@ function renderPagination() {
       .then(res => res.text())
       .then(csv => {
         parseCSV(csv);
-
         document.getElementById("loading").classList.add("hidden");
         document.getElementById("table-wrapper").classList.remove("hidden");
-
         renderTable();
         renderPagination();
       })

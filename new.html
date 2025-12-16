@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPAC Market Overview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .change-positive { @apply text-green-600; }
+    .change-negative { @apply text-red-600; }
+    .change-na { @apply text-gray-500; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <div class="container mx-auto px-4 py-12 max-w-7xl">
+    <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Latest SPACs</h1>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="text-center py-20">
+      <svg class="animate-spin inline h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.373A8 8 0 0112 4v4a8 8 0 01-8 8.373z"></path>
+      </svg>
+      <p class="mt-4 text-gray-600">Loading latest SPACs...</p>
+    </div>
+
+    <!-- Grid -->
+    <div id="spac-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+  </div>
+
+  <script>
+    async function fetchLatestSpacs(limit = 6) {
+      const url = `https://spaclisting.com/wp-json/wp/v2/pages?per_page=${limit}&page=1`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+      const data = await response.json();
+
+      return data.map(page => {
+        const content = page.content?.rendered || '';
+
+        // Price
+        const priceMatch = content.match(/Latest price[\s\S]*?<strong>([\d.,$]+|N\/A)<\/strong>/i);
+        const price = priceMatch ? priceMatch[1].trim() : 'N/A';
+
+        // Change
+        const changeMatch = content.match(/24h\s*%[\s\S]*?<strong[^>]*>([^<]+)<\/strong>/i);
+        let change = changeMatch ? changeMatch[1].trim() : 'N/A';
+        let changeClass = 'change-na';
+        if (change !== 'N/A') {
+          if (change.includes('+') || parseFloat(change) > 0) changeClass = 'change-positive';
+          else if (change.includes('-') || parseFloat(change) < 0) changeClass = 'change-negative';
+        }
+
+        // Volume & Cap
+        const volumeMatch = content.match(/Daily volume[\s\S]*?<strong>([^<]+)<\/strong>/i);
+        const volume = volumeMatch ? volumeMatch[1].trim() : 'N/A';
+        const capMatch = content.match(/Market Cap[\s\S]*?<strong>([^<]+)<\/strong>/i);
+        const cap = capMatch ? capMatch[1].trim() : 'N/A';
+
+        // Ticker & Name
+        const tickerMatch = content.match(/Ticker:<\/strong>\s*([A-Z]+)/i);
+        const ticker = tickerMatch ? tickerMatch[1] : 'N/A';
+        const name = page.title?.rendered || 'Unknown SPAC';
+
+        return { ticker, name, price, change, changeClass, volume, cap, link: page.link };
+      });
+    }
+
+    async function loadSpacs() {
+      const spacs = await fetchLatestSpacs();
+      const grid = document.getElementById('spac-grid');
+      document.getElementById('loading').classList.add('hidden');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = spacs.map(spac => `
+        <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h3 class="text-2xl font-bold text-gray-800">${spac.ticker}</h3>
+              <p class="text-sm text-gray-600 mt-1">${spac.name}</p>
+            </div>
+            <span class="text-sm font-medium ${spac.changeClass}">${spac.change}</span>
+          </div>
+          <div class="text-3xl font-bold text-gray-800 mb-4">${spac.price.startsWith('$') ? '' : '$'}${spac.price}</div>
+          <div class="border-t pt-4 grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-gray-500">Volume</p>
+              <p class="font-semibold">${spac.volume}</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Market Cap</p>
+              <p class="font-semibold">${spac.cap}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    loadSpacs();
+  </script>
+
+</body>
+</html>

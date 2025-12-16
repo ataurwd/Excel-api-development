@@ -35,7 +35,7 @@
       const response = await fetch(url);
       if (!response.ok) return [];
       const data = await response.json();
-
+        console.log(data)
       return data.map(page => {
         const content = page.content?.rendered || '';
 
@@ -74,7 +74,7 @@
       grid.classList.remove('hidden');
 
       grid.innerHTML = spacs.map(spac => `
-        <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+        <a href="${spac.link}" class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
           <div class="flex justify-between items-start mb-4">
             <div>
               <h3 class="text-2xl font-bold text-gray-800">${spac.ticker}</h3>
@@ -93,7 +93,7 @@
               <p class="font-semibold">${spac.cap}</p>
             </div>
           </div>
-        </div>
+        </a>
       `).join('');
     }
 

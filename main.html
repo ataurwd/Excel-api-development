@@ -48,7 +48,7 @@
   <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
       <h1 class="md:text-5xl text-3xl font-bold text-center mb-8">
-        Mapping the world's SPAC Markets
+        Mapping the World's SPAC Markets
       </h1>
       <p class="font-bold text-center mb-6">
         The source of record on special purpose acquisition companies, listings,
@@ -61,38 +61,20 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th
-                  class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left"
-                >
-                  #
-                </th>
-                <th
-                  class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left"
-                >
-                  Name
-                </th>
-                <th
-                  class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left"
-                >
-                  Price
-                </th>
-                <th
-                  class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left"
-                >
-                  Volume
-                </th>
-                <th
-                  class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left"
-                >
-                  Status
-                </th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">#</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">Name</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">Price</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">24h %</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">Volume</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">Market Cap</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-left">Status</th>
                 <th class="px-6 py-3"></th>
               </tr>
             </thead>
 
-            <tbody id="spac-table-body" class="">
+            <tbody id="spac-table-body">
               <tr>
-                <td colspan="6" class="text-center py-10 text-gray-500">
+                <td colspan="8" class="text-center py-10 text-gray-500">
                   Loading data...
                 </td>
               </tr>
@@ -152,10 +134,10 @@
 
         const tbody = document.getElementById("spac-table-body");
         tbody.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center py-10 text-gray-500">Loading...</td>
-      </tr>
-    `;
+          <tr>
+            <td colspan="8" class="text-center py-10 text-gray-500">Loading...</td>
+          </tr>
+        `;
 
         const data = await fetchPage(page);
         tbody.innerHTML = "";
@@ -164,7 +146,7 @@
           if (!p.content?.rendered) return;
           const d = parseSpacDetails(p.content.rendered);
           if (!d) return;
-            console.log(p.title.rendered)
+
           let statusText = "Active";
           let statusClass = "status-active";
 
@@ -175,19 +157,21 @@
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-        <td class="px-6 py-4">${(page - 1) * PER_PAGE + i + 1}</td>
-        <td class="px-6 py-4 font-medium">
-          ${p.title.rendered.length > 15 ? p.title.rendered.slice(0, 45) + "..." : p.title.rendered}
-        </td>
-        <td class="px-6 py-4">${d.Price || "N/A"}</td>
-        <td class="px-6 py-4">${d.Volume || "N/A"}</td>
-        <td class="px-6 py-4">${statusText}</td>
-        <td class="px-6 py-4">
-          <a href="${p.link}" target="_blank" class="text-blue-600 underline">
-            View
-          </a>
-        </td>
-      `;
+            <td class="px-6 py-4">${(page - 1) * PER_PAGE + i + 1}</td>
+            <td class="px-6 py-4 font-medium">
+              ${p.title.rendered.length > 45 ? p.title.rendered.slice(0, 45) + "..." : p.title.rendered}
+            </td>
+            <td class="px-6 py-4">${d.Price || "N/A"}</td>
+            <td class="px-6 py-4">${d['24h %'] || "N/A"}</td>
+            <td class="px-6 py-4">${d.Volume || "N/A"}</td>
+            <td class="px-6 py-4">${d['Market Cap'] || "N/A"}</td>
+            <td class="px-6 py-4 ${statusClass}">${statusText}</td>
+            <td class="px-6 py-4">
+              <a href="${p.link}" target="_blank" class="text-blue-600 underline">
+                View
+              </a>
+            </td>
+          `;
           tbody.appendChild(tr);
         });
 
@@ -198,7 +182,6 @@
       function updateResultInfo() {
         const start = (currentPage - 1) * PER_PAGE + 1;
         const end = Math.min(currentPage * PER_PAGE, TOTAL_ITEMS);
-
         document.getElementById(
           "resultInfo"
         ).innerText = `Showing ${start}–${end} of ${TOTAL_ITEMS} results`;
@@ -217,22 +200,12 @@
         };
 
         container.appendChild(
-          createBtn(
-            "Prev",
-            currentPage - 1,
-            currentPage === 1 ? "disabled" : ""
-          )
+          createBtn("Prev", currentPage - 1, currentPage === 1 ? "disabled" : "")
         );
 
         for (let i = 1; i <= TOTAL_PAGES; i++) {
-          if (
-            i === 1 ||
-            i === TOTAL_PAGES ||
-            (i >= currentPage - 2 && i <= currentPage + 2)
-          ) {
-            container.appendChild(
-              createBtn(i, i, i === currentPage ? "active-page" : "")
-            );
+          if (i === 1 || i === TOTAL_PAGES || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            container.appendChild(createBtn(i, i, i === currentPage ? "active-page" : ""));
           } else if (i === currentPage - 3 || i === currentPage + 3) {
             const dots = document.createElement("span");
             dots.innerText = "...";
@@ -242,11 +215,7 @@
         }
 
         container.appendChild(
-          createBtn(
-            "Next",
-            currentPage + 1,
-            currentPage === TOTAL_PAGES ? "disabled" : ""
-          )
+          createBtn("Next", currentPage + 1, currentPage === TOTAL_PAGES ? "disabled" : "")
         );
       }
 

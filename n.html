@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Sheet Data Table</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <h1 class="text-2xl font-bold mb-4">Live Google Sheet Data</h1>
+
+  <!-- Loading -->
+  <div id="loading" class="text-center py-6 text-gray-600 font-medium">
+    Loading data...
+  </div>
+
+  <div class="overflow-x-auto bg-white rounded-lg shadow hidden" id="table-wrapper">
+    <table class="min-w-full border border-gray-200">
+      <thead class="bg-gray-50" id="table-head"></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div id="pagination" class="flex flex-wrap gap-2 mt-4"></div>
+
+  <script>
+    const CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQgzbB6Vw27cV0EDdxgDroCqLbHkzLi0XVx5_oymXt60h4teu8tS_K551kHbcgcpjyAbvkbXZeL5A82/pub?gid=1401225666&single=true&output=csv";
+
+    const ROWS_PER_PAGE = 50;
+    let currentPage = 1;
+    let headers = [];
+    let rows = [];
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split("\n");
+      headers = lines[0].split(",");
+
+      rows = lines.slice(1).map(line => {
+        const values = line.split(",");
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[h.trim()] = values[i]?.trim();
+        });
+        return obj;
+      });
+    }
+
+    function renderTable() {
+      const start = (currentPage - 1) * ROWS_PER_PAGE;
+      const end = start + ROWS_PER_PAGE;
+      const paginatedRows = rows.slice(start, end);
+
+      // Table Head
+      document.getElementById("table-head").innerHTML = `
+        <tr>
+          ${headers
+            .map(
+              h =>
+                `<th class="px-4 py-2 border text-left text-sm font-semibold">${h}</th>`
+            )
+            .join("")}
+        </tr>
+      `;
+
+      // Table Body
+      document.getElementById("table-body").innerHTML = paginatedRows
+        .map(
+          row => `
+            <tr class="hover:bg-gray-50">
+              ${headers
+                .map(
+                  h =>
+                    `<td class="px-4 py-2 border text-sm">${row[h] || ""}</td>`
+                )
+                .join("")}
+            </tr>
+          `
+        )
+        .join("");
+    }
+
+function renderPagination() {
+  const totalPages = Math.ceil(rows.length / ROWS_PER_PAGE);
+  const pagination = document.getElementById("pagination");
+
+  pagination.innerHTML = "";
+
+  const windowSize = 5; // কতগুলো page একসাথে দেখাবো
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + windowSize - 1);
+
+  // যদি endPage কম হয় windowSize অনুযায়ী adjust কর
+  startPage = Math.max(1, endPage - windowSize + 1);
+
+  // Previous button
+  if (currentPage > 1) {
+    pagination.innerHTML += `
+      <button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Prev</button>
+    `;
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pagination.innerHTML += `
+      <button
+        onclick="goToPage(${i})"
+        class="px-3 py-1 border rounded ${
+          i === currentPage
+            ? "bg-blue-600 text-white"
+            : "bg-white hover:bg-gray-100"
+        }"
+      >
+        ${i}
+      </button>
+    `;
+  }
+
+  // Next button
+  if (currentPage < totalPages) {
+    pagination.innerHTML += `
+      <button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 border rounded bg-white hover:bg-gray-100">Next</button>
+    `;
+  }
+}
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+      renderPagination();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    fetch(CSV_URL)
+      .then(res => res.text())
+      .then(csv => {
+        parseCSV(csv);
+
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("table-wrapper").classList.remove("hidden");
+
+        renderTable();
+        renderPagination();
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("loading").innerHTML =
+          `<span class="text-red-600">Failed to load data</span>`;
+      });
+  </script>
+
+</body>
+</html>

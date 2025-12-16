@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6 font-sans">
-
   <h1 class="text-3xl font-bold mb-6 text-gray-800">Live Google Sheet Data</h1>
 
   <!-- Loading -->
@@ -28,96 +27,106 @@
 
   <script>
     const CSV_URL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQgzbB6Vw27cV0EDdxgDroCqLbHkzLi0XVx5_oymXt60h4teu8tS_K551kHbcgcpjyAbvkbXZeL5A82/pub?gid=1401225666&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSzgypNxRUcd7HswtmD61DUSKvcMykrzx4bK-LcOuc2iSRxdNsl8j7KF6IAb4IKRkvnlZc0L7BbuHrO/pub?gid=1877949697&single=true&output=csv";
 
-    const ROWS_PER_PAGE = 50;
+    const ROWS_PER_PAGE = 20;
     let currentPage = 1;
     let headers = [];
-    let rows = [];
-    let symbolColumnName = "";  // Dynamically detect the symbol column name
+    let allRows = [];           // All data from CSV
+    let symbolColumnName = "";
+    let urlColumns = [];
 
     function parseCSV(csvText) {
       const lines = csvText.trim().split("\n");
-      headers = lines[0].split(",").map(h => h.trim());
+      headers = lines[0].split(",").map(h => h.trim().replace(/\r/g, ''));
 
-      // Find the column that contains symbol (case-insensitive match with "symbol" or "shares")
-      symbolColumnName = headers.find(h => 
+      // Detect symbol column
+      symbolColumnName = headers.find(h =>
         h.toLowerCase().includes("symbol") || h.toLowerCase().includes("shares")
       ) || "";
 
-      rows = lines.slice(1).map(line => {
+      // Detect URL columns
+      urlColumns = headers.filter(h => h.toLowerCase().includes("url"));
+
+      // Store all rows as objects
+      allRows = lines.slice(1).map(line => {
         const values = line.split(",");
         const obj = {};
         headers.forEach((h, i) => {
-          obj[h] = values[i]?.trim() || "";
+          obj[h] = values[i]?.trim().replace(/\r/g, '') || "";
         });
         return obj;
       });
     }
 
-    function renderTable() {
+    // This function renders only the current page's 20 rows
+    function renderCurrentPage() {
       const start = (currentPage - 1) * ROWS_PER_PAGE;
       const end = start + ROWS_PER_PAGE;
-      const paginatedRows = rows.slice(start, end);
+      const paginatedRows = allRows.slice(start, end);
 
-      // Visible headers: exclude the symbol column (whatever its name is)
-      const visibleHeaders = headers.filter(h => h !== symbolColumnName);
+      // Visible headers: exclude symbol column and keep only last URL column
+      let visibleHeaders = headers.filter(h => h !== symbolColumnName);
 
+      if (urlColumns.length > 0) {
+        const lastUrl = urlColumns[urlColumns.length - 1];
+        visibleHeaders = visibleHeaders.filter(h => !urlColumns.includes(h) || h === lastUrl);
+      }
+
+      // Header row
       const headHTML = `
         <tr>
-          <th class="px-4 py-2 border text-left text-sm font-semibold">#</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold bg-[#F9FAFB]">#</th>
           ${visibleHeaders
             .map(h =>
               h.toLowerCase() === "name"
-                ? `<th class="px-4 py-2 border text-left text-sm font-semibold">Name & Symbol</th>`
-                : `<th class="px-4 py-2 border text-left text-sm font-semibold">${h}</th>`
+                ? `<th class="px-4 py-2 text-left text-sm font-semibold">Name & Symbol</th>`
+                : `<th class="px-4 py-2 text-left text-sm font-semibold">${h}</th>`
             )
             .join("")}
-          <th class="px-4 py-2 border text-left text-sm font-semibold">URL</th>
         </tr>
       `;
       document.getElementById("table-head").innerHTML = headHTML;
 
-      // Table Body
+      // Body rows (only current page)
       const bodyHTML = paginatedRows
         .map((row, index) => {
           const rowNumber = start + index + 1;
-          const symbol = row[symbolColumnName] || ""; // Get symbol dynamically
-          const urlValue = row["URL"] || row["Url"] || row["url"] || "";
+          const symbol = row[symbolColumnName] || "";
+
           return `
-            <tr class="hover:bg-gray-50 transition">
-              <td class="px-4 py-2 border text-sm text-gray-600">${rowNumber}</td>
+            <tr class="hover:bg-gray-50 transition border">
+              <td class="px-4 py-2 text-sm text-gray-600">${rowNumber}</td>
               ${visibleHeaders
                 .map(h => {
                   const value = row[h] || "";
-                  // Show symbol under every "Name" column (in case there are multiple name-like columns)
                   if (h.toLowerCase() === "name") {
-                    return `<td class="px-4 py-2 border text-sm text-gray-700 font-medium">
-                              <div class="font-semibold">${value}</div>
-                              <div class="text-gray-400 text-xs">${symbol}</div>
+                    return `<td class="px-4 py-2 text-sm text-gray-700 font-medium">
+                              <div>${value}</div>
+                              <div class="text-gray-500 text-xs">${symbol}</div>
                             </td>`;
                   } else {
-                    return `<td class="px-4 py-2 border text-sm text-gray-600">
+                    return `<td class="px-4 py-2 text-sm text-gray-600">
                               <div>${value}</div>
                             </td>`;
                   }
                 })
                 .join("")}
-              <td class="px-4 py-2 border text-sm text-blue-600 hover:underline">
-                <a href="${urlValue}" target="_blank">Link</a>
-              </td>
             </tr>
           `;
         })
         .join("");
+
       document.getElementById("table-body").innerHTML = bodyHTML;
     }
 
     function renderPagination() {
-      const totalPages = Math.ceil(rows.length / ROWS_PER_PAGE);
+      const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE);
       const pagination = document.getElementById("pagination");
-
       pagination.innerHTML = "";
+
+      if (totalPages <= 1) return; // No pagination needed
+
       const windowSize = 5;
       let startPage = Math.max(1, currentPage - 2);
       let endPage = Math.min(totalPages, startPage + windowSize - 1);
@@ -151,18 +160,23 @@
 
     function goToPage(page) {
       currentPage = page;
-      renderTable();
+      renderCurrentPage();     // Only render the 20 rows for this page
       renderPagination();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
+    // Initial load
     fetch(CSV_URL)
       .then(res => res.text())
       .then(csv => {
         parseCSV(csv);
+
+        // Hide loading, show table
         document.getElementById("loading").classList.add("hidden");
         document.getElementById("table-wrapper").classList.remove("hidden");
-        renderTable();
+
+        // Render first page (20 rows) immediately
+        renderCurrentPage();
         renderPagination();
       })
       .catch(err => {
@@ -171,6 +185,5 @@
           `<span class="text-red-600">Failed to load data</span>`;
       });
   </script>
-
 </body>
 </html>
